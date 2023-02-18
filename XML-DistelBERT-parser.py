@@ -4,7 +4,7 @@ import psutil
 from tqdm import tqdm
 
 # set paths
-xml_path = '/mnt/e/05-DATA/StackOverflowDatasets/Stackoverflow.com-Posts/Posts.xml'
+xml_path = '/path/to/Posts.xml'
 output_dir = 'stackoverflow_data'
 
 # create output directories
