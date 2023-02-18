@@ -1,0 +1,5 @@
+# XML-DistelBERT-parser
+
+Parser to extract data from the StackOverflow archive datasets.
+
+ln 7: Change the path to your data!
