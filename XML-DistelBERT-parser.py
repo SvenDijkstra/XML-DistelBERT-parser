@@ -1,35 +1,48 @@
 import xml.etree.ElementTree as ET
 import os
+import psutil
 from tqdm import tqdm
 
-# set the path of the xml file
-xml_path = '/Path/to/Posts.xml'
+# set paths
+xml_path = '/mnt/e/05-DATA/StackOverflowDatasets/Stackoverflow.com-Posts/Posts.xml'
+output_dir = 'stackoverflow_data'
 
-# create a dictionary to group posts by their post type id
-post_type_dict = {}
+# create output directories
+os.makedirs(os.path.join(output_dir, 'questions'), exist_ok=True)
+os.makedirs(os.path.join(output_dir, 'answers'), exist_ok=True)
 
-# create a generator to iterate over the xml file
-def post_generator():
-    context = ET.iterparse(xml_path, events=('start', 'end'))
-    _, root = next(context)
-    for event, elem in context:
-        if event == 'end' and elem.tag == 'row':
-            yield elem.attrib
-            root.clear()
+# process post element
+def process_post(elem):
+    post_type = elem.get('PostTypeId')
+    post_id = elem.get('Id')
+    post_body = elem.get('Body')
+    
+    # process question post
+    if post_type == '1':
+        with open(os.path.join(output_dir, 'questions', f'{post_id}.txt'), 'w') as f:
+            f.write(post_body)
+    
+    # process answer post
+    if post_type == '2':
+        parent_id = elem.get('ParentId')
+        with open(os.path.join(output_dir, 'answers', f'{post_id}.txt'), 'w') as f:
+            f.write(post_body)
+            f.write('\n' + parent_id + '\n')
+    
+    # clear memory when it reaches about 10GB
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    if mem_info.rss > 10 * 1024 * 1024 * 1024:
+        del elem
+        del post_body
+        del parent_id
+        del post_id
+        del post_type
 
-# iterate over the generator and group posts by their post type id
-for post in tqdm(post_generator(), desc='Processing Posts'):
-    post_type_id = post['PostTypeId']
-    if post_type_id not in post_type_dict:
-        post_type_dict[post_type_id] = []
-    post_type_dict[post_type_id].append(post)
-
-# create folders for each post type id and save the corresponding posts
-for post_type_id, posts in tqdm(post_type_dict.items(), desc='Saving Posts'):
-    folder_path = f'post_type_{post_type_id}'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    with open(f'{folder_path}/posts.txt', 'w') as f:
-        for post in tqdm(posts, desc=f'Saving Posts of type {post_type_id}'):
-            f.write(f'{post}\n')
-
+# iterate through xml file and process posts
+context = ET.iterparse(xml_path, events=('start', 'end'))
+_, root = next(context)
+for event, elem in tqdm(context, desc="Processing Posts"):
+    if event == 'end' and elem.tag == 'row':
+        process_post(elem)
+        root.clear()
